@@ -1,19 +1,29 @@
 FROM python:3.12-alpine
 LABEL maintainer="Almog Hamo"
 
-ENV PYTHONUNBUFFERED=1
+ARG STATE
 
+ENV STATE=${STATE} \
+  PYTHONFAULTHANDLER=1 \
+  PYTHONUNBUFFERED=1 \
+  PYTHONHASHSEED=random \
+  PIP_NO_CACHE_DIR=off \
+  PIP_DISABLE_PIP_VERSION_CHECK=on \
+  PIP_DEFAULT_TIMEOUT=100 \
+  # Poetry's configuration:
+  POETRY_NO_INTERACTION=1 \
+  POETRY_VIRTUALENVS_CREATE=false \
+  POETRY_CACHE_DIR='/var/cache/pypoetry' \
+  POETRY_HOME='/usr/local'
 
 RUN apk update \
-    && apk add --no-cache gcc musl-dev libffi-dev openssl-dev curl python3-dev build-base
+    && apk add curl
 
 RUN curl -sSL https://install.python-poetry.org | python3 -
-ENV PATH="/root/.local/bin:$PATH"
 
 COPY pyproject.toml poetry.lock ./
 
-RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi
+RUN poetry install $(test "$YOUR_ENV" == production && echo "--only=main") --no-interaction --no-ansi
 
 COPY ./app /app
 
